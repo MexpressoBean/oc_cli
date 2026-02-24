@@ -1,0 +1,20 @@
+{
+  "defaults": {
+    "webPort": 18789,
+    "mcPort": 18791
+  },
+  "ssh": {
+    "user": "your-ssh-user",
+    "host": "your-vps-host-or-ip",
+    "serverAliveInterval": 30,
+    "serverAliveCountMax": 3
+  },
+  "missionControl": {
+    "remoteDir": "/absolute/path/on/vps/to/mission-control",
+    "readyMaxTries": 40,
+    "readyDelayMs": 500
+  },
+  "ui": {
+    "accentColor": "#ff6b6b"
+  }
+}
