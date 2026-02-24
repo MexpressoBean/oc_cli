@@ -30,6 +30,15 @@ cp oc.config.example.json oc.config.json
 
 Then edit `oc.config.json` with your VPS details.
 
+Recommended (works from any directory): copy your config to the global location:
+
+```bash
+mkdir -p ~/.oc-cli
+cp oc.config.json ~/.oc-cli/config.json
+```
+
+After this, `oc ...` commands work no matter where you run them from.
+
 ### Config lookup order
 
 The CLI loads config from the first location that exists:
@@ -37,6 +46,8 @@ The CLI loads config from the first location that exists:
 1. `OC_CONFIG_PATH` (if set)
 2. `./oc.config.json` (current working directory)
 3. `~/.oc-cli/config.json`
+
+Tip: if you run `oc` from many different directories, prefer `~/.oc-cli/config.json`.
 
 ### Required config fields
 
