@@ -17,14 +17,43 @@ function shellQuote(input) {
   return `'${String(input).replace(/'/g, `'\\''`)}'`;
 }
 
-function checkLocalTunnelExists(port) {
+function getTunnelPidsByLsof(port) {
   const result = spawnSync(
     "lsof",
-    [`-nP`, `-iTCP:127.0.0.1:${port}`, `-sTCP:LISTEN`],
+    [`-nP`, `-iTCP:${port}`, `-sTCP:LISTEN`],
     { encoding: "utf8" }
   );
-  if (result.status !== 0 || !result.stdout) return false;
-  return result.stdout.includes("ssh");
+
+  if (result.error || !result.stdout) return [];
+
+  return result.stdout
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/))
+    .filter((columns) => columns.length >= 2 && columns[0] === "ssh")
+    .map((columns) => columns[1])
+    .filter(Boolean);
+}
+
+function getTunnelPidsByPattern(port) {
+  const result = spawnSync("ps", ["aux"], { encoding: "utf8" });
+  if (result.error || !result.stdout) return [];
+
+  const pattern = `-L ${port}:127.0.0.1:${port}`;
+  return result.stdout
+    .split("\n")
+    .filter((line) => line.includes("ssh") && line.includes(pattern))
+    .map((line) => line.trim().split(/\s+/)[1])
+    .filter(Boolean);
+}
+
+function getTunnelPids(port) {
+  const combined = [...getTunnelPidsByLsof(port), ...getTunnelPidsByPattern(port)];
+  return [...new Set(combined)];
+}
+
+function checkLocalTunnelExists(port) {
+  return getTunnelPids(port).length > 0;
 }
 
 function checkRemotePortListening(config, port) {
@@ -151,28 +180,7 @@ disown`
 function runKill(config, port) {
   const ui = createUi(config.ui.accentColor);
   console.log(`${ui.info("Looking for SSH tunnel on port")} ${ui.accent(String(port))}${ui.info("...")}`);
-  const list = spawnSync(
-    "lsof",
-    [`-nP`, `-iTCP:127.0.0.1:${port}`, `-sTCP:LISTEN`],
-    { encoding: "utf8" }
-  );
-
-  if (list.error) {
-    throw new Error("Failed to inspect local listeners with lsof.");
-  }
-
-  if (list.status !== 0 && !list.stdout) {
-    console.log(ui.warn(`No SSH tunnel found for port ${port}.`));
-    return;
-  }
-
-  const pids = (list.stdout || "")
-    .split("\n")
-    .slice(1)
-    .map((line) => line.trim().split(/\s+/))
-    .filter((columns) => columns.length >= 2 && columns[0] === "ssh")
-    .map((columns) => columns[1])
-    .filter(Boolean);
+  const pids = getTunnelPids(port);
 
   if (pids.length === 0) {
     console.log(ui.warn(`No SSH tunnel found for port ${port}.`));
